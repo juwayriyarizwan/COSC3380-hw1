@@ -87,8 +87,7 @@ try:
     else:
         print(f"PK\tY") # There are no duplicates
         
-    # Validate the given primary key
-    # Check for uniqueness (# of occurrences)
+    # 1NF Check
     compPk = ','.join(tablePk)
     cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {compPk}, {joinCol} HAVING COUNT(*) > 1);")
     checkUnique = cursor.fetchone()[0]
