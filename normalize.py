@@ -28,7 +28,7 @@ tableName = tableInfo[0].split("=",1)[1]
 tablePk = tableInfo[1].split("=",1)[1].split(",")
 # Table Columns
 tableCol = tableInfo[2].split("=",1)[1].split(",")
-compPk = ','.join(tablePk)
+joinPk = ','.join(tablePk)
 joinCol = ','.join(tableCol)
 
 #Checks if input is valid
@@ -66,7 +66,7 @@ try:
         cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
         pkExists = cursor.fetchone()[0]
         if (pkExists != True):
-            print(f"Primary key {pk} does not exist.")
+            print(f"Primary key column {pk} does not exist.")
             exit()
     
     # Checks if the columns exists
@@ -80,7 +80,7 @@ try:
             
     # Validate the given primary key
     # Check for uniqueness (# of occurrences)
-    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {compPk} HAVING COUNT(*) > 1);")
+    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
     checkUnique = cursor.fetchone()[0]
     if checkUnique == True:
         print(f"PK\tN") # There are duplicates
@@ -88,14 +88,14 @@ try:
         print(f"PK\tY") # There are no duplicates
         
     # 1NF Check
-    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {compPk}, {joinCol} HAVING COUNT(*) > 1);")
+    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk}, {joinCol} HAVING COUNT(*) > 1);")
     checkUnique = cursor.fetchone()[0]
     if checkUnique == True:
         print(f"1NF\tN") # There are duplicates
     else:
         print(f"1NF\tY") # There are no duplicates
     
-    # Execute an SQL query to fetch data from table T0
+    # Execute an SQL query to fetch data from table
     cursor.execute("SELECT * FROM " + tableName + ";")
     
     # Fetch all rows from the cursor into a list
