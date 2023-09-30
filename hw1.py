@@ -47,6 +47,9 @@ try:
 
     # Create a new database session and return a cursor object
     cursor = connection.cursor()
+
+    # Open text file 
+    sys.stdout = open("nf.txt", "w")
     
     print("Connection Successful")
     
@@ -80,8 +83,8 @@ try:
     print("Fetched rows:")
     for row in rows:
         print(row)
-    #     col1, col2, col3 = row 
-    #     print(f"col1: {col1}, col2: {col2}, col3: {col3}")
+        #col1, col2 = row 
+        #print(f"col1: {col1}, col2: {col2}")
 
 
 # Print any errors that occured trying to establish connection or execute a query
@@ -98,3 +101,7 @@ finally:
     # Close the connection to free up resources
     if connection:
         connection.close()
+
+# Close text file
+sys.stdout.close()
+sysstdout = sys.__stdout__
