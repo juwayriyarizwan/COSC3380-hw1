@@ -18,13 +18,21 @@ connection = None
 
 # On file run, checks if user entered data for a table
 if (len(sys.argv) != 2):
-    print ("Please enter 1 input.")
+    print ("Invalid input.")
     exit()
 
+# Stores table information
 tableInfo = sys.argv[1].split(";")
 tableName = tableInfo[0].split("=",1)[1]
+# Primary Key, can be composit
 tablePk = tableInfo[1].split("=",1)[1].split(",")
+# Table Columns
 tableCol = tableInfo[2].split("=",1)[1].split(",")
+
+#Checks if input is valid
+if ("" in tablePk or "" in tableCol):
+    print ("Invalid input.")
+    exit()
 
 try:
     # Establish a connection to the PostgreSQL database
@@ -42,6 +50,26 @@ try:
     
     print("Connection Successful")
     
+    # Checks if the table exists
+    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{tableName}');")
+    if (cursor.fetchall()[0][0] != True):
+        print("Table does not exist.")
+        exit()
+    
+    # Checks if the primary key exists
+    for pk in tablePk:
+        cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
+        if (cursor.fetchall()[0][0] != True):
+            print(f"Primary key {pk} does not exist.")
+            exit()
+    
+    # Checks if the columns exists
+    for col in tableCol:
+        cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{col}');")
+        if (cursor.fetchall()[0][0] != True):
+            print(f"Column {col} does not exist.")
+            exit()
+    
     # Execute an SQL query to fetch data from table T0
     cursor.execute("SELECT * FROM " + tableName + ";")
     
@@ -51,8 +79,9 @@ try:
     # Display fetched rows
     print("Fetched rows:")
     for row in rows:
-        col1, col2 = row 
-        print(f"col1: {col1}, col2: {col2}")
+        print(row)
+    #     col1, col2, col3 = row 
+    #     print(f"col1: {col1}, col2: {col2}, col3: {col3}")
 
 
 # Print any errors that occured trying to establish connection or execute a query
