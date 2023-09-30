@@ -49,9 +49,10 @@ try:
     cursor = connection.cursor()
 
     # Open text file 
-    sys.stdout = open("nf.txt", "w")
+    sys.stdout = open("nf.txt", "w+")
     
     print("Connection Successful")
+    print(tableName)
     
     # Checks if the table exists
     cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{tableName}');")
@@ -62,9 +63,21 @@ try:
     # Checks if the primary key exists
     for pk in tablePk:
         cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
-        if (cursor.fetchall()[0][0] != True):
+        pkExists = cursor.fetchall()[0][0]
+        if (pkExists != True):
             print(f"Primary key {pk} does not exist.")
             exit()
+    
+   # Validate the given primary key
+   # Check for uniqueness (# of occurrences)
+    compPk = ','.join(tablePk)
+    cursor.execute(f"SELECT EXISTS (SELECT {compPk}, COUNT(*) FROM {tableName} GROUP BY {compPk} HAVING COUNT(*) > 1);")
+    checkUnique = cursor.fetchall()[0][0]
+    if checkUnique == True:
+        print(f"PK:\t\tNo")     # There are duplicates
+        exit()
+    else:
+        print(f"PK:\t\tYes")    # There are no duplicates
     
     # Checks if the columns exists
     for col in tableCol:
@@ -83,8 +96,8 @@ try:
     print("Fetched rows:")
     for row in rows:
         print(row)
-        #col1, col2 = row 
-        #print(f"col1: {col1}, col2: {col2}")
+        # col1, col2 = row 
+        # print(f"col1: {col1}, col2: {col2}")
 
 
 # Print any errors that occured trying to establish connection or execute a query
