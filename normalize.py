@@ -31,6 +31,7 @@ tableCol = tableInfo[2].split("=",1)[1].split(",")
 joinPk = ','.join(tablePk)
 joinCol = ','.join(tableCol)
 currentForm = ""
+validPk = False
 
 #Checks if input is valid
 if ("" in tablePk or "" in tableCol):
@@ -87,6 +88,7 @@ try:
         print(f"PK\tN") # There are duplicates
     else:
         print(f"PK\tY") # There are no duplicates
+        validPk = True
         
     # 1NF Check
     # Checks if there exists duplicate rows
@@ -102,7 +104,7 @@ try:
     # Checks for partial dependencies for composit keys
     if (len(tablePk) == 1 and currentForm == "1NF"):
         currentForm = "2NF" # 2NF if pk is not composit and table passes 1NF
-    elif(currentForm == "1NF"):
+    elif(validPk == True and currentForm == "1NF"):
         currentForm = "2NF"
         # For each attribute in a composit key, checks if duplicates exist
         for pk in tablePk:
