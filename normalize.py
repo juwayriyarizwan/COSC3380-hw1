@@ -51,7 +51,7 @@ try:
     cursor = connection.cursor()
 
     # Open text file 
-    #sys.stdout = open("nf.txt", "w+")
+    #sys.stdout = open("nf.txt", "a+")
     
     print("Database Connection Successful")
     
