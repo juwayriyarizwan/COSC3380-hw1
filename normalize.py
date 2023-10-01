@@ -28,8 +28,9 @@ tableName = tableInfo[0].split("=",1)[1]
 tablePk = tableInfo[1].split("=",1)[1].split(",")
 # Table Columns
 tableCol = tableInfo[2].split("=",1)[1].split(",")
-compPk = ','.join(tablePk)
+joinPk = ','.join(tablePk)
 joinCol = ','.join(tableCol)
+currentForm = ""
 
 #Checks if input is valid
 if ("" in tablePk or "" in tableCol):
@@ -66,7 +67,7 @@ try:
         cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
         pkExists = cursor.fetchone()[0]
         if (pkExists != True):
-            print(f"Primary key {pk} does not exist.")
+            print(f"Primary key column {pk} does not exist.")
             exit()
     
     # Checks if the columns exists
@@ -79,43 +80,52 @@ try:
     print(tableName)
             
     # Validate the given primary key
-    # Check for uniqueness (# of occurrences)
-    cursor.execute(f"SELECT EXISTS (SELECT {compPk}, COUNT(*) FROM {tableName} GROUP BY {compPk} HAVING COUNT(*) > 1);")
-    checkUnique = cursor.fetchone()[0]
-    if checkUnique == True:
+    # Checks if there exists duplicate values in primary key
+    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
+    checkDuplicate = cursor.fetchone()[0]
+    if checkDuplicate == True:
         print(f"PK\tN") # There are duplicates
     else:
         print(f"PK\tY") # There are no duplicates
         
     # 1NF Check
-    compPk = ','.join(tablePk)
-    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {compPk}, {joinCol} HAVING COUNT(*) > 1);")
-    checkUnique = cursor.fetchone()[0]
-    if checkUnique == True:
-        print(f"1NF\tN") # There are non-atomic values
+    # Checks if there exists duplicate rows
+    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk}, {joinCol} HAVING COUNT(*) > 1);")
+    checkDuplicate = cursor.fetchone()[0]
+    if checkDuplicate == True:
+        print(f"1NF\tN") # There are duplicates
     else:
-        print(f"1NF\tY") # There are atomic values
-    
+        print(f"1NF\tY") # There are no duplicates
+        currentForm = "1NF"
+        
     # 2NF Check
-    for col in tableCol:
-        if col not in tablePk:
-           for pk in tablePk:
-            cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk}, {col} HAVING COUNT(*) > 1);")
-    checkUnique = cursor.fetchone()[0]
-    if checkUnique == True:
-        print(f"2NF\tN")    # There are partial dependencies
+    # Checks for partial dependencies for composit keys
+    if (len(tablePk) == 1 and currentForm == "1NF"):
+        currentForm = "2NF" # 2NF if pk is not composit and table passes 1NF
+    elif(currentForm == "1NF"):
+        currentForm = "2NF"
+        # For each attribute in a composit key, checks if duplicates exist
+        for pk in tablePk:
+            cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
+            checkDuplicates = cursor.fetchone()[0]
+            # if there are no duplicates, the primary key attribute is a partial dependency
+            if checkDuplicates == False:
+                currentForm = "1NF"
+    if (currentForm == "2NF"):
+        print(f"2NF\tY")
     else:
-        print(f"2NF\tY")    # There are no partial dependencies
+        print(f"2NF\tN")
     
-    # Execute an SQL query to fetch data from table T0
+    # Execute an SQL query to fetch data from table
     cursor.execute("SELECT * FROM " + tableName + ";")
     
     # Fetch all rows from the cursor into a list
-    rows = cursor.fetchall()
-    for row in rows:
-        print(row)
+    # rows = cursor.fetchall()
+    # for row in rows:
+        # print(row)
         # col1, col2 = row 
         # print(f"col1: {col1}, col2: {col2}")
+
 
 # Print any errors that occured trying to establish connection or execute a query
 except Exception as e:
