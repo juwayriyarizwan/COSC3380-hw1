@@ -102,8 +102,8 @@ try:
         
     # 2NF Check
     # Checks for partial dependencies for composit keys
-    if (len(tablePk) == 1 and currentForm == "1NF"):
-        currentForm = "2NF" # 2NF if pk is not composit and table passes 1NF
+    if (validPk == True and len(tablePk) == 1 and currentForm == "1NF"):
+        currentForm = "2NF" # 2NF if valid pk is not composit and table passes 1NF
     elif(validPk == True and currentForm == "1NF"):
         currentForm = "2NF"
         # For each attribute in a composit key, checks if duplicates exist
