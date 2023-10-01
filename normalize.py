@@ -28,7 +28,7 @@ tableName = tableInfo[0].split("=",1)[1]
 tablePk = tableInfo[1].split("=",1)[1].split(",")
 # Table Columns
 tableCol = tableInfo[2].split("=",1)[1].split(",")
-joinPk = ','.join(tablePk)
+compPk = ','.join(tablePk)
 joinCol = ','.join(tableCol)
 
 #Checks if input is valid
@@ -51,7 +51,7 @@ try:
     cursor = connection.cursor()
 
     # Open text file 
-    #sys.stdout = open("nf.txt", "a+")
+    sys.stdout = open("nf.txt", "a+")
     
     print("Database Connection Successful")
     
@@ -66,7 +66,7 @@ try:
         cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
         pkExists = cursor.fetchone()[0]
         if (pkExists != True):
-            print(f"Primary key column {pk} does not exist.")
+            print(f"Primary key {pk} does not exist.")
             exit()
     
     # Checks if the columns exists
@@ -80,7 +80,7 @@ try:
             
     # Validate the given primary key
     # Check for uniqueness (# of occurrences)
-    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
+    cursor.execute(f"SELECT EXISTS (SELECT {compPk}, COUNT(*) FROM {tableName} GROUP BY {compPk} HAVING COUNT(*) > 1);")
     checkUnique = cursor.fetchone()[0]
     if checkUnique == True:
         print(f"PK\tN") # There are duplicates
@@ -88,14 +88,26 @@ try:
         print(f"PK\tY") # There are no duplicates
         
     # 1NF Check
-    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk}, {joinCol} HAVING COUNT(*) > 1);")
+    compPk = ','.join(tablePk)
+    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {compPk}, {joinCol} HAVING COUNT(*) > 1);")
     checkUnique = cursor.fetchone()[0]
     if checkUnique == True:
-        print(f"1NF\tN") # There are duplicates
+        print(f"1NF\tN") # There are non-atomic values
     else:
-        print(f"1NF\tY") # There are no duplicates
+        print(f"1NF\tY") # There are atomic values
     
-    # Execute an SQL query to fetch data from table
+    # 2NF Check
+    for col in tableCol:
+        if col not in tablePk:
+           for pk in tablePk:
+            cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk}, {col} HAVING COUNT(*) > 1);")
+    checkUnique = cursor.fetchone()[0]
+    if checkUnique == True:
+        print(f"2NF\tN")    # There are partial dependencies
+    else:
+        print(f"2NF\tY")    # There are no partial dependencies
+    
+    # Execute an SQL query to fetch data from table T0
     cursor.execute("SELECT * FROM " + tableName + ";")
     
     # Fetch all rows from the cursor into a list
@@ -104,7 +116,6 @@ try:
         print(row)
         # col1, col2 = row 
         # print(f"col1: {col1}, col2: {col2}")
-
 
 # Print any errors that occured trying to establish connection or execute a query
 except Exception as e:
@@ -122,5 +133,4 @@ finally:
         connection.close()
 
 # Close text file
-#sys.stdout.close()
-#sysstdout = sys.__stdout__
+sys.stdout.close()
