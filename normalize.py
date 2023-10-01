@@ -51,9 +51,6 @@ try:
 
     # Create a new database session and return a cursor object
     cursor = connection.cursor()
-
-    # Open text file 
-    sys.stdout = open("nf.txt", "a+")
     
     print("Database Connection Successful")
     
@@ -78,6 +75,9 @@ try:
             print(f"Column {col} does not exist.")
             exit()
             
+    # Open text file 
+    sys.stdout = open("nf.txt", "a+")  
+    
     print(tableName)
             
     # Validate the given primary key
@@ -104,7 +104,7 @@ try:
     # Checks for partial dependencies for composit keys
     if (validPk == True and currentForm == "1NF"):
         if (len(tablePk) == 1):
-            currentForm = "2NF" # 2NF if valid pk is not composit and table passes 1NF
+            currentForm = "2NF" # 2NF if valid pk is not composit
         else:
             currentForm = "2NF"
             # For each attribute in a composit key, checks if duplicates exist
@@ -145,5 +145,6 @@ finally:
     if connection:
         connection.close()
 
+print()
 # Close text file
 sys.stdout.close()
