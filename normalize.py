@@ -102,24 +102,25 @@ try:
         
     # 2NF Check
     # Checks for partial dependencies for composit keys
-    if (validPk == True and len(tablePk) == 1 and currentForm == "1NF"):
-        currentForm = "2NF" # 2NF if valid pk is not composit and table passes 1NF
-    elif(validPk == True and currentForm == "1NF"):
-        currentForm = "2NF"
-        # For each attribute in a composit key, checks if duplicates exist
-        for pk in tablePk:
-            cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
-            checkDuplicates = cursor.fetchone()[0]
-            # if there are no duplicates, the primary key attribute is a partial dependency
-            if checkDuplicates == False:
-                currentForm = "1NF"
+    if (validPk == True and currentForm == "1NF"):
+        if (len(tablePk) == 1):
+            currentForm = "2NF" # 2NF if valid pk is not composit and table passes 1NF
+        else:
+            currentForm = "2NF"
+            # For each attribute in a composit key, checks if duplicates exist
+            for pk in tablePk:
+                cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
+                checkDuplicates = cursor.fetchone()[0]
+                # if there are no duplicates, the primary key attribute is a partial dependency
+                if checkDuplicates == False:
+                    currentForm = "1NF"
     if (currentForm == "2NF"):
         print(f"2NF\tY")
     else:
         print(f"2NF\tN")
     
     # Execute an SQL query to fetch data from table
-    cursor.execute("SELECT * FROM " + tableName + ";")
+    # cursor.execute("SELECT * FROM " + tableName + ";")
     
     # Fetch all rows from the cursor into a list
     # rows = cursor.fetchall()
