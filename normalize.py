@@ -24,10 +24,15 @@ if (len(sys.argv) != 2):
 # Stores table information
 tableInfo = sys.argv[1].split(";")
 tableName = tableInfo[0].split("=",1)[1]
-# Primary Key, can be composit
+# Primary Key, can be composite
 tablePk = tableInfo[1].split("=",1)[1].split(",")
 # Table Columns
 tableCol = tableInfo[2].split("=",1)[1].split(",")
+
+# Removes pk from columns group
+for pk in tablePk:
+    tableCol.remove(pk)
+
 joinPk = ','.join(tablePk)
 joinCol = ','.join(tableCol)
 currentForm = ""
@@ -56,24 +61,28 @@ try:
     
     # Checks if the table exists
     cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{tableName}');")
-    if (cursor.fetchone()[0] != True):
-        print("Table does not exist.")
+    if cursor.fetchone()[0] != True:
+        print("Invalid input.")
         exit()
     
     # Checks if the primary key exists
     for pk in tablePk:
         cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
         pkExists = cursor.fetchone()[0]
-        if (pkExists != True):
-            print(f"Primary key column {pk} does not exist.")
+        if pkExists != True:
+            print(f"Invalid input.")
             exit()
     
     # Checks if the columns exists
     for col in tableCol:
         cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{col}');")
-        if (cursor.fetchone()[0] != True):
-            print(f"Column {col} does not exist.")
+        if cursor.fetchone()[0] != True:
+            print(f"Invalid input.")
             exit()
+            
+    if tablePk == tableCol:
+        print(f"Invalid input.")
+        exit()
             
     # Open text file 
     sys.stdout = open("nf.txt", "a+")  
@@ -94,17 +103,17 @@ try:
     # Checks if there exists duplicate rows
     cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk}, {joinCol} HAVING COUNT(*) > 1);")
     checkDuplicate = cursor.fetchone()[0]
-    if checkDuplicate == True:
+    if checkDuplicate == True or validPk == False:
         print(f"1NF\tN") # There are duplicates
     else:
         print(f"1NF\tY") # There are no duplicates
         currentForm = "1NF"
         
     # 2NF Check
-    # Checks for partial dependencies for composit keys
-    if (validPk == True and currentForm == "1NF"):
-        if (len(tablePk) == 1):
-            currentForm = "2NF" # 2NF if valid pk is not composit
+    # Checks for partial dependencies for composite keys
+    if validPk == True and currentForm == "1NF":
+        if len(tablePk) == 1:
+            currentForm = "2NF" # 2NF if valid pk is not composite
         else:
             currentForm = "2NF"
             # For each attribute in a composit key, checks if duplicates exist
@@ -114,7 +123,7 @@ try:
                 # if there are no duplicates, the primary key attribute is a partial dependency
                 if checkDuplicates == False:
                     currentForm = "1NF"
-    if (currentForm == "2NF"):
+    if currentForm == "2NF":
         print(f"2NF\tY")
     else:
         print(f"2NF\tN")
@@ -145,6 +154,5 @@ finally:
     if connection:
         connection.close()
 
-print()
 # Close text file
 sys.stdout.close()
