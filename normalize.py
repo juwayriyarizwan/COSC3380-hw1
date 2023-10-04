@@ -29,10 +29,6 @@ tablePk = tableInfo[1].split("=",1)[1].split(",")
 # Table Columns
 tableCol = tableInfo[2].split("=",1)[1].split(",")
 
-# Removes pk from columns group
-for pk in tablePk:
-    tableCol.remove(pk)
-
 joinPk = ','.join(tablePk)
 joinCol = ','.join(tableCol)
 currentForm = ""
@@ -90,40 +86,51 @@ try:
     print(tableName)
             
     # Validate the given primary key
-    # Checks if there exists duplicate values in primary key
     cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
     checkDuplicate = cursor.fetchone()[0]
-    if checkDuplicate == True:
-        print(f"PK\tN") # There are duplicates
+    # Checks if there exists duplicate values in primary key with 1 attribute
+    if len(tablePk) == 1:
+        if checkDuplicate == True:
+            print(f"PK\tN") # There are duplicates
+        else:
+            print(f"PK\tY") # There are no duplicates
+            validPk = True
     else:
-        print(f"PK\tY") # There are no duplicates
+        # For each individual attribute in a composite key, checks if duplicates exist
         validPk = True
+        for pk in tablePk:
+            cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
+            checkDuplicates = cursor.fetchone()[0]
+            # If there are no duplicates, the primary key attribute is a partial dependency
+            if checkDuplicates == False:
+                validPk = False
+
+        # Checks if full composite key has duplicates
+        cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
+        checkDuplicate = cursor.fetchone()[0]
+        if checkDuplicate == True:
+            validPk = False # There are no duplicates
+        
+        if validPk == True:
+            print(f"PK\tY") # Attributes fully dependant on full key
+        else:
+            print(f"PK\tN") # Partial dependency, not minimal
+
         
     # 1NF Check
     # Checks if there exists duplicate rows
     cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk}, {joinCol} HAVING COUNT(*) > 1);")
     checkDuplicate = cursor.fetchone()[0]
-    if checkDuplicate == True or validPk == False:
+    if checkDuplicate == True:
         print(f"1NF\tN") # There are duplicates
     else:
         print(f"1NF\tY") # There are no duplicates
         currentForm = "1NF"
         
     # 2NF Check
-    # Checks for partial dependencies for composite keys
+    # Checks for duplicate rows for composite keys
     if validPk == True and currentForm == "1NF":
-        if len(tablePk) == 1:
-            currentForm = "2NF" # 2NF if valid pk is not composite
-        else:
-            currentForm = "2NF"
-            # For each attribute in a composit key, checks if duplicates exist
-            for pk in tablePk:
-                cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
-                checkDuplicates = cursor.fetchone()[0]
-                # if there are no duplicates, the primary key attribute is a partial dependency
-                if checkDuplicates == False:
-                    currentForm = "1NF"
-    if currentForm == "2NF":
+        currentForm = "2NF"
         print(f"2NF\tY")
     else:
         print(f"2NF\tN")
