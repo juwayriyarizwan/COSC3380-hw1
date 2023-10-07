@@ -34,7 +34,7 @@ joinCol = ','.join(tableCol)
 currentForm = ""
 validPk = False
 
-#Checks if input is valid
+# Checks if input is valid
 if ("" in tablePk or "" in tableCol):
     print ("Invalid input.")
     exit()
@@ -81,7 +81,7 @@ try:
         exit()
             
     # Open text file 
-    sys.stdout = open("nf.txt", "a+")  
+    sys.stdout = open("nf.txt", "w+")  
     
     print(tableName)
             
@@ -91,9 +91,9 @@ try:
     # Checks if there exists duplicate values in primary key with 1 attribute
     if len(tablePk) == 1:
         if checkDuplicate == True:
-            print(f"PK\tN") # There are duplicates
+            print(f"PK\t\tN") # There are duplicates
         else:
-            print(f"PK\tY") # There are no duplicates
+            print(f"PK\t\tY") # There are no duplicates
             validPk = True
     else:
         # For each individual attribute in a composite key, checks if duplicates exist
@@ -112,9 +112,9 @@ try:
             validPk = False # There are no duplicates
         
         if validPk == True:
-            print(f"PK\tY") # Attributes fully dependant on full key
+            print(f"PK\t\tY") # Attributes fully dependant on full key
         else:
-            print(f"PK\tN") # Partial dependency, not minimal
+            print(f"PK\t\tN") # Partial dependency, not minimal
 
         
     # 1NF Check
@@ -122,28 +122,44 @@ try:
     cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk}, {joinCol} HAVING COUNT(*) > 1);")
     checkDuplicate = cursor.fetchone()[0]
     if checkDuplicate == True:
-        print(f"1NF\tN") # There are duplicates
+        print(f"1NF\t\tN") # There are duplicates
     else:
-        print(f"1NF\tY") # There are no duplicates
+        print(f"1NF\t\tY") # There are no duplicates
         currentForm = "1NF"
         
     # 2NF Check
     # Checks for duplicate rows for composite keys
     if validPk == True and currentForm == "1NF":
         currentForm = "2NF"
-        print(f"2NF\tY")
+        print(f"2NF\t\tY")
     else:
-        print(f"2NF\tN")
+        print(f"2NF\t\tN")
+    
+    # 3NF Check
+    # Checks for dependencies from non-key attributes
+    checkDependency = True
+    if currentForm == "2NF":
+        for npk in set(tableCol) - set(tablePk):
+            for pk in tablePk:
+                cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
+                if cursor.fetchone()[0]:
+                    checkDependency = False
+                    break
+    if checkDependency:
+        print(f"3NF\t\tN")  # There are transitive dependencies
+    else:
+        print(f"3NF\t\tY")  # There are no transitive dependencies
+        currentForm = "3NF" 
     
     # Execute an SQL query to fetch data from table
-    # cursor.execute("SELECT * FROM " + tableName + ";")
+    cursor.execute("SELECT * FROM " + tableName + ";")
     
     # Fetch all rows from the cursor into a list
-    # rows = cursor.fetchall()
-    # for row in rows:
-        # print(row)
-        # col1, col2 = row 
-        # print(f"col1: {col1}, col2: {col2}")
+    rows = cursor.fetchall()
+    for row in rows:
+        print(row) 
+        #col1, col2 = row 
+        #print(f"col1: {col1}, col2: {col2}")
 
 
 # Print any errors that occured trying to establish connection or execute a query
