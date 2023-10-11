@@ -171,16 +171,16 @@ try:
         if currentForm == "3NF":
             for npk in set(tableCol) - set(tablePk):
                 for pk in tablePk:
-                    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
-                    if cursor.fetchone()[0]:
+                    cursor.execute(f"SELECT EXISTS (SELECT COUNT({npk}) FROM (SELECT {npk} FROM db.{tableName} GROUP BY {pk}, {npk}) t GROUP BY {npk} HAVING COUNT(*) > 1);")
+                    if cursor.fetchone()[0] == False:
                         checkDependency = True
                         break
                 if checkDependency:
-                    break 
-        if checkDependency:
-            print(f"BCNF\tN")  # There are transitive dependencies
+                    break
+        if checkDependency or currentForm != "3NF":
+            print(f"BCNF\tN")  # There are dependencies
         else:
-            print(f"BCNF\tY")  # There are no transitive dependencies
+            print(f"BCNF\tY")  # There are no dependencies
             currentForm = "BCNF" 
 
 
