@@ -89,6 +89,8 @@ try:
     # Open text file 
     sys.stdout = open("nf.txt", "a+")  
     
+    print(tableName)
+    
     cursor.execute(f"SELECT COUNT(*) FROM db.{tableName};")
     numRows = cursor.fetchone()[0]
     if numRows == 0 or numRows == 1:
@@ -147,23 +149,23 @@ try:
         else:
             print(f"2NF\tN")
     
-        # 3NF Check
+        # BCNF Check
         # Checks for dependencies from non-key attributes
-        checkTransitiveDepend = False
-        if currentForm == "2NF":
+        checkDependency = False
+        if currentForm == "3NF":
             for npk in set(tableCol) - set(tablePk):
-                for col in tableCol:
-                    for pk in tablePk:
-                        cursor.execute(f"SELECT EXISTS (SELECT 1 FROM db.{tableName} t1 WHERE NOT EXISTS (SELECT 1 FROM {tableName} t2 WHERE t2.{pk} = t1.{pk} AND t2.{col} <> t1.{col})) AS transitive_dependency;")
-                        transitive_dependency = cursor.fetchone()[0]
-                        if transitive_dependency:
-                            checkTransitiveDepend = True
-                            break
-        if checkTransitiveDepend:
-            print(f"3NF\t\tN")  # There are transitive dependencies 
+                for pk in tablePk:
+                    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
+                    if cursor.fetchone()[0]:
+                        checkDependency = True
+                        break
+                if checkDependency:
+                    break 
+        if checkDependency:
+            print(f"BCNF\tN")  # There are transitive dependencies
         else:
-            print(f"3NF\t\tY")  # There are no transitive dependencies
-            currentForm = "3NF"
+            print(f"BCNF\tY")  # There are no transitive dependencies
+            currentForm = "BCNF" 
 
         # BCNF Check
         # Checks for dependencies from non-key attributes
