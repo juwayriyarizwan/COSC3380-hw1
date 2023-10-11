@@ -149,23 +149,21 @@ try:
         else:
             print(f"2NF\tN")
     
-        # BCNF Check
+        # 3NF Check
         # Checks for dependencies from non-key attributes
-        checkDependency = False
-        if currentForm == "3NF":
+        checkDependency = True
+        if currentForm == "2NF":
             for npk in set(tableCol) - set(tablePk):
                 for pk in tablePk:
                     cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
                     if cursor.fetchone()[0]:
-                        checkDependency = True
+                        checkDependency = False
                         break
-                if checkDependency:
-                    break 
         if checkDependency:
-            print(f"BCNF\tN")  # There are transitive dependencies
+            print(f"3NF\tN")  # There are transitive dependencies
         else:
-            print(f"BCNF\tY")  # There are no transitive dependencies
-            currentForm = "BCNF" 
+            print(f"3NF\tY")  # There are no transitive dependencies
+            currentForm = "3NF"
 
         # BCNF Check
         # Checks for dependencies from non-key attributes
