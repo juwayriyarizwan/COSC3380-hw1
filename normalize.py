@@ -70,6 +70,11 @@ try:
     #     print("Invalid input.")
     #     exit()
 
+    # Checks if user entered primary key
+    if tablePk[0] == '':
+        print(f"Invalid input.")
+        exit()
+
     # # Checks if the primary key exists
     # for pk in tablePk:
     #     cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
@@ -161,7 +166,7 @@ try:
             print(f"2NF\tN")
     
         # 3NF Check
-        # Checks for dependencies from non-key attributes
+        # Checks for dependencies between non-key attributes
         checkDependency = False
         if currentForm == "2NF" and len(tableCol) > 1:
             for npk in tableCol:
@@ -175,7 +180,7 @@ try:
             currentForm = "3NF"
 
         # BCNF Check
-        # Checks for dependencies from non-key attributes
+        # Checks for dependencies between non-key attributes and pk
         checkDependency = False
         if currentForm == "3NF":
             for npk in set(tableCol) - set(tablePk):
