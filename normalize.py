@@ -35,7 +35,7 @@ joinCol = ','.join(tableCol)
 joinAll = ""
 # Checks if columns are empty and joins primary key and columns into comma separated string
 if tableCol[0] == '':
-    emptyCol = True
+    tableCol = []
     joinAll = joinPk
 else:
     joinAll = joinPk + "," + joinCol
@@ -116,7 +116,7 @@ try:
             for pk in tablePk:
                 cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
                 checkDuplicates = cursor.fetchone()[0]
-                # If there are no duplicates, the primary key attribute is a partial dependency
+                # If there are no duplicates, the primary key is not valid
                 if checkDuplicates == False:
                     validPk = False
 
@@ -143,7 +143,18 @@ try:
             currentForm = "1NF"
         
         # 2NF Check
-        if validPk == True and currentForm == "1NF":
+        # Check for partial dependency
+        checkDependency = False
+        if currentForm == "1NF" and len(tablePk) > 1:
+            for pk in tablePk:
+                for npk in tableCol:
+                    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM (SELECT {pk} FROM db.{tableName} GROUP BY {pk}, {npk}) t GROUP BY {pk} HAVING COUNT(*) > 1);")
+                    if cursor.fetchone()[0] == False:
+                        checkDependency = True
+                        break
+                if checkDependency:
+                    break
+        if validPk == True and currentForm == "1NF" and checkDependency == False:
             currentForm = "2NF"
             print(f"2NF\tY")
         else:
@@ -151,15 +162,13 @@ try:
     
         # 3NF Check
         # Checks for dependencies from non-key attributes
-        checkDependency = True
-        if currentForm == "2NF":
-            for npk in set(tableCol) - set(tablePk):
-                for pk in tablePk:
-                    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
-                    if cursor.fetchone()[0]:
-                        checkDependency = False
-                        break
-        if checkDependency:
+        checkDependency = False
+        if currentForm == "2NF" and len(tableCol) > 1:
+            for npk in tableCol:
+                cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM (SELECT {npk} FROM db.{tableName} GROUP BY {joinCol}) t GROUP BY {npk} HAVING COUNT(*) > 1);")
+                if cursor.fetchone()[0] == False:
+                    checkDependency = True
+        if checkDependency or currentForm != "2NF":
             print(f"3NF\tN")  # There are transitive dependencies
         else:
             print(f"3NF\tY")  # There are no transitive dependencies
@@ -171,7 +180,7 @@ try:
         if currentForm == "3NF":
             for npk in set(tableCol) - set(tablePk):
                 for pk in tablePk:
-                    cursor.execute(f"SELECT EXISTS (SELECT COUNT({npk}) FROM (SELECT {npk} FROM db.{tableName} GROUP BY {pk}, {npk}) t GROUP BY {npk} HAVING COUNT(*) > 1);")
+                    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM (SELECT {npk} FROM db.{tableName} GROUP BY {pk}, {npk}) t GROUP BY {npk} HAVING COUNT(*) > 1);")
                     if cursor.fetchone()[0] == False:
                         checkDependency = True
                         break
