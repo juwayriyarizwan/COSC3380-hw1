@@ -155,7 +155,7 @@ try:
         if currentForm == "2NF":
             for npk in set(tableCol) - set(tablePk):
                 for pk in tablePk:
-                    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
+                    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
                     if cursor.fetchone()[0]:
                         checkDependency = False
                         break
