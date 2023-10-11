@@ -29,13 +29,22 @@ tablePk = tableInfo[1].split("=",1)[1].split(",")
 # Table Columns
 tableCol = tableInfo[2].split("=",1)[1].split(",")
 
+emptyCol = False
 joinPk = ','.join(tablePk)
 joinCol = ','.join(tableCol)
+joinAll = ""
+# Checks if columns are empty and joins primary key and columns into comma separated string
+if tableCol[0] == '':
+    emptyCol = True
+    joinAll = joinPk
+else:
+    joinAll = joinPk + "," + joinCol
+
 currentForm = ""
 validPk = False
 
 # Checks if input is valid
-if ("" in tablePk or "" in tableCol):
+if ("" in tablePk):
     print ("Invalid input.")
     exit()
 
@@ -54,112 +63,118 @@ try:
     cursor = connection.cursor()
     
     print("Database Connection Successful")
-    
+
     # Checks if the table exists
-    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{tableName}');")
-    if cursor.fetchone()[0] != True:
-        print("Invalid input.")
-        exit()
-    
-    # Checks if the primary key exists
-    for pk in tablePk:
-        cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
-        pkExists = cursor.fetchone()[0]
-        if pkExists != True:
-            print(f"Invalid input.")
-            exit()
-    
-    # Checks if the columns exists
-    for col in tableCol:
-        cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{col}');")
-        if cursor.fetchone()[0] != True:
-            print(f"Invalid input.")
-            exit()
-            
-    if tablePk == tableCol:
-        print(f"Invalid input.")
-        exit()
+    # cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{tableName}');")
+    # if cursor.fetchone()[0] == False:
+    #     print("Invalid input.")
+    #     exit()
+
+    # # Checks if the primary key exists
+    # for pk in tablePk:
+    #     cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{pk}');")
+    #     pkExists = cursor.fetchone()[0]
+    #     if pkExists == False:
+    #         print(f"Invalid input.")
+    #         exit()
+
+    # # Checks if non-empty columns exist
+    # if emptyCol == False:
+    #     for col in tableCol:
+    #         cursor.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='{tableName}' AND column_name='{col}');")
+    #         if cursor.fetchone()[0] == False:
+    #             print(f"Invalid input.")
+    #             exit()
             
     # Open text file 
-    sys.stdout = open("nf.txt", "w+")  
+    sys.stdout = open("nf.txt", "a+")  
     
-    print(tableName)
+    
             
     # Validate the given primary key
-    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
+    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
     checkDuplicate = cursor.fetchone()[0]
     # Checks if there exists duplicate values in primary key with 1 attribute
     if len(tablePk) == 1:
         if checkDuplicate == True:
-            print(f"PK\t\tN") # There are duplicates
+            print(f"PK\tinvalid") # There are duplicates
         else:
-            print(f"PK\t\tY") # There are no duplicates
+            print(f"PK\tvalid") # There are no duplicates
             validPk = True
     else:
         # For each individual attribute in a composite key, checks if duplicates exist
         validPk = True
         for pk in tablePk:
-            cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
+            cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {pk} HAVING COUNT(*) > 1);")
             checkDuplicates = cursor.fetchone()[0]
             # If there are no duplicates, the primary key attribute is a partial dependency
             if checkDuplicates == False:
                 validPk = False
 
         # Checks if full composite key has duplicates
-        cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
+        cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {joinPk} HAVING COUNT(*) > 1);")
         checkDuplicate = cursor.fetchone()[0]
         if checkDuplicate == True:
             validPk = False # There are no duplicates
         
         if validPk == True:
-            print(f"PK\t\tY") # Attributes fully dependant on full key
+            print(f"PK\tvalid") # Attributes fully dependant on full key
         else:
-            print(f"PK\t\tN") # Partial dependency, not minimal
+            print(f"PK\tinvalid") # Partial dependency, not minimal
 
         
     # 1NF Check
     # Checks if there exists duplicate rows
-    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {joinPk}, {joinCol} HAVING COUNT(*) > 1);")
+    cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM db.{tableName} GROUP BY {joinAll} HAVING COUNT(*) > 1);")
     checkDuplicate = cursor.fetchone()[0]
     if checkDuplicate == True:
-        print(f"1NF\t\tN") # There are duplicates
+        print(f"1NF\tN") # There are duplicates
     else:
-        print(f"1NF\t\tY") # There are no duplicates
+        print(f"1NF\tY") # There are no duplicates
         currentForm = "1NF"
         
     # 2NF Check
-    # Checks for duplicate rows for composite keys
     if validPk == True and currentForm == "1NF":
         currentForm = "2NF"
-        print(f"2NF\t\tY")
+        print(f"2NF\tY")
     else:
-        print(f"2NF\t\tN")
+        print(f"2NF\tN")
     
     # 3NF Check
     # Checks for dependencies from non-key attributes
-    checkDependency = True
+    checkTransitiveDepend = False
     if currentForm == "2NF":
+        for npk in set(tableCol) - set(tablePk):
+            for col in tableCol:
+                for pk in tablePk:
+                    cursor.execute(f"SELECT EXISTS (SELECT 1 FROM {tableName} t1 WHERE NOT EXISTS (SELECT 1 FROM {tableName} t2 WHERE t2.{pk} = t1.{pk} AND t2.{col} <> t1.{col})) AS transitive_dependency;")
+                    transitive_dependency = cursor.fetchone()[0]
+                    if transitive_dependency:
+                        checkTransitiveDepend = True
+                        break
+    if checkTransitiveDepend:
+        print(f"3NF\t\tN")  # There are transitive dependencies 
+    else:
+        print(f"3NF\t\tY")  # There are no transitive dependencies
+        currentForm = "3NF"
+
+    # BCNF Check
+    # Checks for dependencies from non-key attributes
+    checkDependency = False
+    if currentForm == "3NF":
         for npk in set(tableCol) - set(tablePk):
             for pk in tablePk:
                 cursor.execute(f"SELECT EXISTS (SELECT COUNT(*) FROM {tableName} GROUP BY {pk}, {npk} HAVING COUNT(*) > 1);")
                 if cursor.fetchone()[0]:
-                    checkDependency = False
+                    checkDependency = True
                     break
+            if checkDependency:
+                break 
     if checkDependency:
-        print(f"3NF\t\tN")  # There are transitive dependencies
+        print(f"BCNF\tN")  # There are transitive dependencies
     else:
-        print(f"3NF\t\tY")  # There are no transitive dependencies
-        currentForm = "3NF" 
-    
-    # Execute an SQL query to fetch data from table
-    cursor.execute("SELECT * FROM " + tableName + ";")
-    
-    # Fetch all rows from the cursor into a list
-    rows = cursor.fetchall()
-    for row in rows:
-        print(row) 
-        #col1, col2 = row 
-        #print(f"col1: {col1}, col2: {col2}")
+        print(f"BCNF\tY")  # There are no transitive dependencies
+        currentForm = "BCNF" 
 
 
 # Print any errors that occured trying to establish connection or execute a query
